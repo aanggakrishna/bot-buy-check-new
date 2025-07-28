@@ -132,7 +132,13 @@ class TelegramBot:
             message = f"{buy_event['token_name']} {buy_event['token_symbol']} 🔔 Buy!\n\n"
             message += "🤑🤑🤑🤑🤑🤑🤑🤑🤑🤑\n\n"
             message += f"💰| {buy_event['eth_amount']:,.4f} ETH (${eth_amount_usd:,.2f})\n"
+            # Di dalam metode send_buy_alert, ubah
             message += f"📈| Got: {format_number(buy_event['token_amount'])} {buy_event['token_symbol']}\n"
+            
+            # Menjadi
+            message += f"📈| Got: {self.format_number(buy_event['token_amount'])} {buy_event['token_symbol']}\n"
+            
+            # Dan ubah semua panggilan format_number lainnya dengan cara yang sama
             message += f"👤| Buyer: [Wallet]({ETHERSCAN_ADDRESS_URL}{buy_event['buyer']}) | [Tx]({ETHERSCAN_TX_URL}{buy_event['tx_hash']})\n"
             
             # Add token trading info if available
@@ -456,7 +462,7 @@ class TelegramBot:
         
         update.message.reply_text(message)
     
-    # Tambahkan fungsi helper untuk memformat angka besar menjadi format yang mudah dibaca
+    # Ubah dari
     def format_number(num):
         """Format angka besar menjadi format yang mudah dibaca (K, M, B, T)"""
         if num is None:
