@@ -6,6 +6,7 @@ from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackContext, CallbackQueryHandler, Filters, MessageHandler, Updater
 from web3 import Web3
+import numpy as np
 
 from config import TELEGRAM_BOT_TOKEN, ADMIN_USER_ID, ETHERSCAN_TX_URL, ETHERSCAN_ADDRESS_URL
 from database import Database
