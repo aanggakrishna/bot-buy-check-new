@@ -40,6 +40,7 @@ class TelegramBot:
         self.dispatcher.add_handler(CommandHandler("removetoken", self.remove_token_command, filters=Filters.user(user_id=ADMIN_USER_ID)))
         self.dispatcher.add_handler(CommandHandler("listtokens", self.list_tokens_command))
         self.dispatcher.add_handler(CommandHandler("listgroups", self.list_groups_command, filters=Filters.user(user_id=ADMIN_USER_ID)))
+        self.dispatcher.add_handler(CommandHandler("tokeninfo", self.token_info_command))
         
         # Callback query handler
         self.dispatcher.add_handler(CallbackQueryHandler(self.button_callback))
@@ -85,8 +86,9 @@ class TelegramBot:
                     'trading_info': "Unknown"
                 }
             
+            # In the send_buy_alert method
             # Create wallet status text
-            wallet_status = "Fresh" if wallet_info['is_fresh_wallet'] else f"Lama ({wallet_info['wallet_age_days']} hari)"
+            wallet_status = "Fresh" if wallet_info['is_fresh_wallet'] else f"Old ({wallet_info['wallet_age_days']} days)"
             
             # Create other holdings text
             other_holdings_text = ""
@@ -94,11 +96,14 @@ class TelegramBot:
                 other_holdings_text += f"- ${holding['symbol']}: {holding['balance']:.4f} (~${holding['usd_value']:.2f})\n"
             
             if not other_holdings_text:
-                other_holdings_text = "- Tidak ada holdings signifikan\n"
+                other_holdings_text = "- No significant holdings\n"
             
             # Create behavior text
             behavior_text = "Swing Trader" if wallet_info['is_swing_trader'] else "Diamond Hands"
             behavior_detail = f"({wallet_info['trading_info']})"
+            
+            # Get token trading info if the wallet has traded this token before
+            token_trading_info = self.wallet_analyzer.get_token_trading_info(buy_event['buyer'], buy_event['token_address'])
             
             # Create message text
             message = f"{buy_event['token_name']} {buy_event['token_symbol']} 💀Buy!\n\n"
@@ -106,7 +111,16 @@ class TelegramBot:
             message += f"💀| {buy_event['eth_amount']:.4f} ETH (${eth_amount_usd:.2f})\n"
             message += f"💀| Got: {buy_event['token_amount']:.4f} {buy_event['token_symbol']}\n"
             message += f"💀| Buyer: [Wallet]({ETHERSCAN_ADDRESS_URL}{buy_event['buyer']}) | [Tx]({ETHERSCAN_TX_URL}{buy_event['tx_hash']})\n"
-            message += f"💀| Position: New\n"
+            
+            # Add token trading info if available
+            if token_trading_info and token_trading_info['trade_count'] > 0:
+                message += f"💀| Position: Swing Trade ({token_trading_info['trade_count']} trades)\n"
+                message += f"💀| Bought: {token_trading_info['bought_amount']:.4f} tokens (${token_trading_info['bought_value_usd']:.2f})\n"
+                message += f"💀| PNL: ${token_trading_info['total_pnl']:.2f} ({token_trading_info['pnl_percentage']:.2f}%)\n"
+                message += f"💀| Remaining: {token_trading_info['remaining_tokens']:.4f} tokens (${token_trading_info['current_value_usd']:.2f})\n"
+            else:
+                message += f"💀| Position: New\n"
+            
             message += f"💀| Holders: {token_info.get('holders', 'Unknown')}\n"
             message += f"💀| Market Cap: ${token_info.get('market_cap', 0):,.2f}\n\n"
             
@@ -143,34 +157,34 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"Error sending buy alert: {e}")
     
-    # Change from async def to def
+    # In the start_command method
     def start_command(self, update: Update, context: CallbackContext):
         """
         Handler for /start command
         """
         update.message.reply_text(
-            'Halo! Saya adalah bot yang mendeteksi pembelian token ERC-20 di Uniswap.\n'
-            'Gunakan /help untuk melihat daftar perintah yang tersedia.'
+            'Hello! I am a bot that detects ERC-20 token purchases on Uniswap.\n'
+            'Use /help to see the list of available commands.'
         )
     
-    # Change from async def to def
+    # In the help_command method
     def help_command(self, update: Update, context: CallbackContext):
         """
         Handler for /help command
         """
         help_text = (
-            'Daftar perintah yang tersedia:\n\n'
-            '/register - Mendaftarkan grup ini untuk menerima notifikasi\n'
-            '/unregister - Membatalkan pendaftaran grup ini\n'
-            '/listtokens - Menampilkan daftar token yang dipantau\n\n'
-            'Perintah Admin:\n'
-            '/addtoken <alamat> <nama> <simbol> - Menambahkan token untuk dipantau\n'
-            '/removetoken <alamat> - Menghapus token dari pantauan\n'
-            '/listgroups - Menampilkan daftar grup yang terdaftar'
+            'List of available commands:\n\n'
+            '/register - Register this group to receive notifications\n'
+            '/unregister - Unregister this group\n'
+            '/listtokens - Display list of monitored tokens\n\n'
+            'Admin Commands:\n'
+            '/addtoken <address> <name> <symbol> - Add token to monitor\n'
+            '/removetoken <address> - Remove token from monitoring\n'
+            '/listgroups - Display list of registered groups'
         )
         update.message.reply_text(help_text)
     
-    # Change from async def to def
+    # In the register_command method
     def register_command(self, update: Update, context: CallbackContext):
         """
         Handler for /register command
@@ -181,18 +195,18 @@ class TelegramBot:
         
         # Check if this is a group chat
         if update.effective_chat.type not in ['group', 'supergroup']:
-            update.message.reply_text('Perintah ini hanya dapat digunakan dalam grup.')
+            update.message.reply_text('This command can only be used in groups.')
             return
         
         # Register the group
         success = self.db.register_group(chat_id, chat_title, user_id)
         
         if success:
-            update.message.reply_text('Grup ini berhasil didaftarkan untuk menerima notifikasi pembelian token.')
+            update.message.reply_text('This group has been successfully registered to receive token purchase notifications.')
         else:
-            update.message.reply_text('Gagal mendaftarkan grup. Silakan coba lagi nanti.')
+            update.message.reply_text('Failed to register group. Please try again later.')
     
-    # Change from async def to def
+    # In the unregister_command method
     def unregister_command(self, update: Update, context: CallbackContext):
         """
         Handler for /unregister command
@@ -203,23 +217,23 @@ class TelegramBot:
         success = self.db.unregister_group(chat_id)
         
         if success:
-            update.message.reply_text('Grup ini telah berhenti menerima notifikasi pembelian token.')
+            update.message.reply_text('This group has stopped receiving token purchase notifications.')
         else:
-            update.message.reply_text('Gagal membatalkan pendaftaran grup. Silakan coba lagi nanti.')
+            update.message.reply_text('Failed to unregister group. Please try again later.')
     
-    # Change from async def to def
+    # In the add_token_command method
     def add_token_command(self, update: Update, context: CallbackContext):
         """
         Handler for /addtoken command
         """
         # Check if user is admin
         if update.effective_user.id != ADMIN_USER_ID:
-            update.message.reply_text('Anda tidak memiliki izin untuk menggunakan perintah ini.')
+            update.message.reply_text('You do not have permission to use this command.')
             return
         
         # Check arguments
         if len(context.args) < 3:
-            update.message.reply_text('Penggunaan: /addtoken <alamat> <nama> <simbol>')
+            update.message.reply_text('Usage: /addtoken <address> <name> <symbol>')
             return
         
         token_address = context.args[0]
@@ -228,30 +242,30 @@ class TelegramBot:
         
         # Validate token address
         if not self.w3.is_address(token_address):
-            update.message.reply_text('Alamat token tidak valid.')
+            update.message.reply_text('Invalid token address.')
             return
         
         # Add token to database
         success = self.db.add_token(token_address, token_name, token_symbol)
         
         if success:
-            update.message.reply_text(f'Token {token_name} ({token_symbol}) berhasil ditambahkan.')
+            update.message.reply_text(f'Token {token_name} ({token_symbol}) successfully added.')
         else:
-            update.message.reply_text('Gagal menambahkan token. Silakan coba lagi nanti.')
+            update.message.reply_text('Failed to add token. Please try again later.')
     
-    # Change from async def to def
+    # In the remove_token_command method
     def remove_token_command(self, update: Update, context: CallbackContext):
         """
         Handler for /removetoken command
         """
         # Check if user is admin
         if update.effective_user.id != ADMIN_USER_ID:
-            update.message.reply_text('Anda tidak memiliki izin untuk menggunakan perintah ini.')
+            update.message.reply_text('You do not have permission to use this command.')
             return
         
         # Check arguments
         if len(context.args) < 1:
-            update.message.reply_text('Penggunaan: /removetoken <alamat>')
+            update.message.reply_text('Usage: /removetoken <address>')
             return
         
         token_address = context.args[0]
@@ -260,11 +274,11 @@ class TelegramBot:
         success = self.db.remove_token(token_address)
         
         if success:
-            update.message.reply_text(f'Token dengan alamat {token_address} berhasil dihapus.')
+            update.message.reply_text(f'Token with address {token_address} successfully removed.')
         else:
-            update.message.reply_text('Gagal menghapus token. Silakan coba lagi nanti.')
+            update.message.reply_text('Failed to remove token. Please try again later.')
     
-    # Change from async def to def
+    # In the list_tokens_command method
     def list_tokens_command(self, update: Update, context: CallbackContext):
         """
         Handler for /listtokens command
@@ -272,32 +286,32 @@ class TelegramBot:
         tokens = self.db.get_monitored_tokens()
         
         if not tokens:
-            update.message.reply_text('Tidak ada token yang dipantau saat ini.')
+            update.message.reply_text('No tokens are currently being monitored.')
             return
         
-        message = 'Daftar token yang dipantau:\n\n'
+        message = 'List of monitored tokens:\n\n'
         for token_address, token_name, token_symbol in tokens:
             message += f'• {token_name} ({token_symbol})\n  `{token_address}`\n\n'
         
         update.message.reply_text(message, parse_mode='Markdown')
     
-    # Change from async def to def
+    # In the list_groups_command method
     def list_groups_command(self, update: Update, context: CallbackContext):
         """
         Handler for /listgroups command
         """
         # Check if user is admin
         if update.effective_user.id != ADMIN_USER_ID:
-            update.message.reply_text('Anda tidak memiliki izin untuk menggunakan perintah ini.')
+            update.message.reply_text('You do not have permission to use this command.')
             return
         
         groups = self.db.get_registered_groups()
         
         if not groups:
-            update.message.reply_text('Tidak ada grup yang terdaftar saat ini.')
+            update.message.reply_text('No groups are currently registered.')
             return
         
-        message = 'Daftar grup yang terdaftar:\n\n'
+        message = 'List of registered groups:\n\n'
         for chat_id in groups:
             message += f'• Chat ID: {chat_id}\n'
         
@@ -332,3 +346,46 @@ class TelegramBot:
         self.updater.stop()
         logger.info("Bot stopped")
         self.db.close()
+    
+    def token_info_command(self, update: Update, context: CallbackContext):
+        """
+        Handler for /tokeninfo command
+        """
+        # Check arguments
+        if len(context.args) < 2:
+            update.message.reply_text('Usage: /tokeninfo <wallet_address> <token_address>')
+            return
+        
+        wallet_address = context.args[0]
+        token_address = context.args[1]
+        
+        # Validate addresses
+        if not self.w3.is_address(wallet_address) or not self.w3.is_address(token_address):
+            update.message.reply_text('Invalid wallet or token address.')
+            return
+        
+        # Get token trading info
+        trading_info = self.wallet_analyzer.get_token_trading_info(wallet_address, token_address)
+        
+        if not trading_info:
+            update.message.reply_text('Could not retrieve trading information for this token.')
+            return
+        
+        if trading_info['trade_count'] == 0:
+            update.message.reply_text('No trading activity found for this token in this wallet.')
+            return
+        
+        # Create message
+        message = f"Trading info for {trading_info['token_symbol']}:\n\n"
+        message += f"Total Trades: {trading_info['trade_count']} ({trading_info['buy_count']} buys, {trading_info['sell_count']} sells)\n\n"
+        message += f"Bought: {trading_info['bought_amount']:.4f} tokens\n"
+        message += f"Total Cost: ${trading_info['bought_value_usd']:.2f}\n\n"
+        message += f"Sold: {trading_info['sold_amount']:.4f} tokens\n"
+        message += f"Sold Value: ${trading_info['sold_value_usd']:.2f}\n\n"
+        message += f"Remaining: {trading_info['remaining_tokens']:.4f} tokens\n"
+        message += f"Current Value: ${trading_info['current_value_usd']:.2f}\n\n"
+        message += f"Realized PNL: ${trading_info['realized_pnl']:.2f}\n"
+        message += f"Unrealized PNL: ${trading_info['unrealized_pnl']:.2f}\n"
+        message += f"Total PNL: ${trading_info['total_pnl']:.2f} ({trading_info['pnl_percentage']:.2f}%)\n"
+        
+        update.message.reply_text(message)
