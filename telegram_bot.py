@@ -56,8 +56,11 @@ class TelegramBot:
         Send buy alert to all registered groups
         """
         try:
+            print(f"Received buy event: {buy_event}")
+            
             # Cek apakah ini adalah heartbeat
             if buy_event.get('is_heartbeat', False):
+                print("This is a heartbeat event")
                 # Kirim heartbeat hanya ke admin
                 try:
                     from config import ADMIN_USER_ID
@@ -73,8 +76,10 @@ class TelegramBot:
             
             # Check if we've already processed this transaction
             if self.db.is_transaction_processed(buy_event['tx_hash']):
+                print(f"Transaction {buy_event['tx_hash']} already processed, skipping")
                 return
             
+            print(f"Marking transaction {buy_event['tx_hash']} as processed")
             # Mark transaction as processed
             self.db.mark_transaction_processed(buy_event['tx_hash'])
             
@@ -161,8 +166,10 @@ class TelegramBot:
             
             # Send message to all registered groups
             registered_groups = self.db.get_registered_groups()
+            print(f"Sending notification to {len(registered_groups)} registered groups")
             for chat_id in registered_groups:
                 try:
+                    print(f"Sending notification to group {chat_id}")
                     # Use bot.send_message instead of await
                     self.updater.bot.send_message(
                         chat_id=chat_id,

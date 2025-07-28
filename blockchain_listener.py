@@ -215,6 +215,7 @@ class BlockchainListener:
         Process a token buy event
         """
         try:
+            print(f"Processing buy event for tx: {tx_hash}, buyer: {buyer_address}")
             # Extract event data
             token_address = pair_info['token_address']
             token_name = pair_info['token_name']
@@ -265,6 +266,9 @@ class BlockchainListener:
                     buy_event['patterns'] = patterns
             
             # Call the callback function with the buy event
+            # Tambahkan log sebelum memanggil callback
+            print(f"Calling callback with buy event: {buy_event}")
             await self.callback(buy_event)
+            print(f"Callback completed for tx: {tx_hash}")
         except Exception as e:
             print(f"Error processing buy event: {e}")
