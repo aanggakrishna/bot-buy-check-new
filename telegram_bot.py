@@ -109,23 +109,24 @@ class TelegramBot:
             token_trading_info = self.wallet_analyzer.get_token_trading_info(buy_event['buyer'], buy_event['token_address'])
             
             # Create message text
-            message = f"{buy_event['token_name']} {buy_event['token_symbol']} 💀Buy!\n\n"
+            message = f"{buy_event['token_name']} {buy_event['token_symbol']} 🔔 Buy!\n\n"
             message += "🤑🤑🤑🤑🤑🤑🤑🤑🤑🤑\n\n"
-            message += f"💀| {buy_event['eth_amount']:.4f} ETH (${eth_amount_usd:.2f})\n"
-            message += f"💀| Got: {buy_event['token_amount']:.4f} {buy_event['token_symbol']}\n"
-            message += f"💀| Buyer: [Wallet]({ETHERSCAN_ADDRESS_URL}{buy_event['buyer']}) | [Tx]({ETHERSCAN_TX_URL}{buy_event['tx_hash']})\n"
+            message += f"💰| {buy_event['eth_amount']:,.4f} ETH (${eth_amount_usd:,.2f})\n"
+            message += f"📈| Got: {format_number(buy_event['token_amount'])} {buy_event['token_symbol']}\n"
+            message += f"👤| Buyer: [Wallet]({ETHERSCAN_ADDRESS_URL}{buy_event['buyer']}) | [Tx]({ETHERSCAN_TX_URL}{buy_event['tx_hash']})\n"
             
             # Add token trading info if available
             if token_trading_info and token_trading_info['trade_count'] > 0:
-                message += f"💀| Position: Swing Trade ({token_trading_info['trade_count']} trades)\n"
-                message += f"💀| Bought: {token_trading_info['bought_amount']:.4f} tokens (${token_trading_info['bought_value_usd']:.2f})\n"
-                message += f"💀| PNL: ${token_trading_info['total_pnl']:.2f} ({token_trading_info['pnl_percentage']:.2f}%)\n"
-                message += f"💀| Remaining: {token_trading_info['remaining_tokens']:.4f} tokens (${token_trading_info['current_value_usd']:.2f})\n"
+                message += f"📊| Position: Swing Trade ({token_trading_info['trade_count']} trades)\n"
+                message += f"🛒| Bought: {format_number(token_trading_info['bought_amount'])} tokens (${token_trading_info['bought_value_usd']:,.2f})\n"
+                message += f"💹| PNL: ${token_trading_info['total_pnl']:,.2f} ({token_trading_info['pnl_percentage']:,.2f}%)\n"
+                message += f"💼| Remaining: {format_number(token_trading_info['remaining_tokens'])} tokens (${token_trading_info['current_value_usd']:,.2f})\n"
             else:
-                message += f"💀| Position: New\n"
+                message += f"🆕| Position: New\n"
             
-            message += f"💀| Holders: {token_info.get('holders', 'Unknown')}\n"
-            message += f"💀| Market Cap: ${token_info.get('market_cap', 0):,.2f}\n\n"
+            # Pastikan untuk mendapatkan jumlah holder terbaru
+            message += f"👥| Holders: {token_info.get('holders', 'Unknown')}\n"
+            message += f"💲| Market Cap: ${token_info.get('market_cap', 0):,.2f}\n\n"
             
             message += f"🧠 Wallet Status: {wallet_status}\n"
             message += f"🐋 Other Holdings:\n{other_holdings_text}"
@@ -134,11 +135,11 @@ class TelegramBot:
             # Create inline keyboard
             keyboard = [
                 [
-                    InlineKeyboardButton("💀 Buy", url=f"https://app.uniswap.org/#/swap?outputCurrency={buy_event['token_address']}"),
-                    InlineKeyboardButton("💀 DexScreener", url=token_info.get('dexscreener_url', f"https://dexscreener.com/ethereum/{buy_event['token_address']}"))
+                    InlineKeyboardButton("🛒 Buy", url=f"https://app.uniswap.org/#/swap?outputCurrency={buy_event['token_address']}"),
+                    InlineKeyboardButton("📊 DexScreener", url=token_info.get('dexscreener_url', f"https://dexscreener.com/ethereum/{buy_event['token_address']}"))
                 ],
                 [
-                    InlineKeyboardButton("💀 Trending", url=f"https://www.dextools.io/app/en/ether/pair-explorer/{buy_event['token_address']}")
+                    InlineKeyboardButton("📈 Trending", url=f"https://www.dextools.io/app/en/ether/pair-explorer/{buy_event['token_address']}")
                 ]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -432,3 +433,21 @@ class TelegramBot:
             message += f"Price Change: {percent_change:.2f}%\n\n"
         
         update.message.reply_text(message)
+    
+    # Tambahkan fungsi helper untuk memformat angka besar menjadi format yang mudah dibaca
+    def format_number(num):
+        """Format angka besar menjadi format yang mudah dibaca (K, M, B, T)"""
+        if num is None:
+            return "0"
+        magnitude = 0
+        labels = ["", "K", "M", "B", "T"]
+        
+        while abs(num) >= 1000:
+            magnitude += 1
+            num /= 1000.0
+        
+        # Jangan gunakan format yang disingkat jika kurang dari 1000
+        if magnitude == 0:
+            return f"{num:,.4f}"
+        else:
+            return f"{num:,.2f}{labels[magnitude]}"
