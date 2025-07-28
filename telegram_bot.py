@@ -118,7 +118,9 @@ class TelegramBot:
             keyboard = [
                 [
                     InlineKeyboardButton("💀 Buy", url=f"https://app.uniswap.org/#/swap?outputCurrency={buy_event['token_address']}"),
-                    InlineKeyboardButton("💀 DexScreener", url=token_info.get('dexscreener_url', f"https://dexscreener.com/ethereum/{buy_event['token_address']}")),
+                    InlineKeyboardButton("💀 DexScreener", url=token_info.get('dexscreener_url', f"https://dexscreener.com/ethereum/{buy_event['token_address']}"))
+                ],
+                [
                     InlineKeyboardButton("💀 Trending", url=f"https://www.dextools.io/app/en/ether/pair-explorer/{buy_event['token_address']}")
                 ]
             ]
@@ -128,7 +130,8 @@ class TelegramBot:
             registered_groups = self.db.get_registered_groups()
             for chat_id in registered_groups:
                 try:
-                    await self.updater.bot.send_message(
+                    # Use bot.send_message instead of await
+                    self.updater.bot.send_message(
                         chat_id=chat_id,
                         text=message,
                         parse_mode='Markdown',
@@ -140,16 +143,18 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"Error sending buy alert: {e}")
     
-    async def start_command(self, update: Update, context: CallbackContext):
+    # Change from async def to def
+    def start_command(self, update: Update, context: CallbackContext):
         """
         Handler for /start command
         """
-        await update.message.reply_text(
+        update.message.reply_text(
             'Halo! Saya adalah bot yang mendeteksi pembelian token ERC-20 di Uniswap.\n'
             'Gunakan /help untuk melihat daftar perintah yang tersedia.'
         )
     
-    async def help_command(self, update: Update, context: CallbackContext):
+    # Change from async def to def
+    def help_command(self, update: Update, context: CallbackContext):
         """
         Handler for /help command
         """
@@ -163,9 +168,10 @@ class TelegramBot:
             '/removetoken <alamat> - Menghapus token dari pantauan\n'
             '/listgroups - Menampilkan daftar grup yang terdaftar'
         )
-        await update.message.reply_text(help_text)
+        update.message.reply_text(help_text)
     
-    async def register_command(self, update: Update, context: CallbackContext):
+    # Change from async def to def
+    def register_command(self, update: Update, context: CallbackContext):
         """
         Handler for /register command
         """
@@ -175,18 +181,19 @@ class TelegramBot:
         
         # Check if this is a group chat
         if update.effective_chat.type not in ['group', 'supergroup']:
-            await update.message.reply_text('Perintah ini hanya dapat digunakan dalam grup.')
+            update.message.reply_text('Perintah ini hanya dapat digunakan dalam grup.')
             return
         
         # Register the group
         success = self.db.register_group(chat_id, chat_title, user_id)
         
         if success:
-            await update.message.reply_text('Grup ini berhasil didaftarkan untuk menerima notifikasi pembelian token.')
+            update.message.reply_text('Grup ini berhasil didaftarkan untuk menerima notifikasi pembelian token.')
         else:
-            await update.message.reply_text('Gagal mendaftarkan grup. Silakan coba lagi nanti.')
+            update.message.reply_text('Gagal mendaftarkan grup. Silakan coba lagi nanti.')
     
-    async def unregister_command(self, update: Update, context: CallbackContext):
+    # Change from async def to def
+    def unregister_command(self, update: Update, context: CallbackContext):
         """
         Handler for /unregister command
         """
@@ -196,22 +203,23 @@ class TelegramBot:
         success = self.db.unregister_group(chat_id)
         
         if success:
-            await update.message.reply_text('Grup ini telah berhenti menerima notifikasi pembelian token.')
+            update.message.reply_text('Grup ini telah berhenti menerima notifikasi pembelian token.')
         else:
-            await update.message.reply_text('Gagal membatalkan pendaftaran grup. Silakan coba lagi nanti.')
+            update.message.reply_text('Gagal membatalkan pendaftaran grup. Silakan coba lagi nanti.')
     
-    async def add_token_command(self, update: Update, context: CallbackContext):
+    # Change from async def to def
+    def add_token_command(self, update: Update, context: CallbackContext):
         """
         Handler for /addtoken command
         """
         # Check if user is admin
         if update.effective_user.id != ADMIN_USER_ID:
-            await update.message.reply_text('Anda tidak memiliki izin untuk menggunakan perintah ini.')
+            update.message.reply_text('Anda tidak memiliki izin untuk menggunakan perintah ini.')
             return
         
         # Check arguments
         if len(context.args) < 3:
-            await update.message.reply_text('Penggunaan: /addtoken <alamat> <nama> <simbol>')
+            update.message.reply_text('Penggunaan: /addtoken <alamat> <nama> <simbol>')
             return
         
         token_address = context.args[0]
@@ -220,29 +228,30 @@ class TelegramBot:
         
         # Validate token address
         if not self.w3.is_address(token_address):
-            await update.message.reply_text('Alamat token tidak valid.')
+            update.message.reply_text('Alamat token tidak valid.')
             return
         
         # Add token to database
         success = self.db.add_token(token_address, token_name, token_symbol)
         
         if success:
-            await update.message.reply_text(f'Token {token_name} ({token_symbol}) berhasil ditambahkan.')
+            update.message.reply_text(f'Token {token_name} ({token_symbol}) berhasil ditambahkan.')
         else:
-            await update.message.reply_text('Gagal menambahkan token. Silakan coba lagi nanti.')
+            update.message.reply_text('Gagal menambahkan token. Silakan coba lagi nanti.')
     
-    async def remove_token_command(self, update: Update, context: CallbackContext):
+    # Change from async def to def
+    def remove_token_command(self, update: Update, context: CallbackContext):
         """
         Handler for /removetoken command
         """
         # Check if user is admin
         if update.effective_user.id != ADMIN_USER_ID:
-            await update.message.reply_text('Anda tidak memiliki izin untuk menggunakan perintah ini.')
+            update.message.reply_text('Anda tidak memiliki izin untuk menggunakan perintah ini.')
             return
         
         # Check arguments
         if len(context.args) < 1:
-            await update.message.reply_text('Penggunaan: /removetoken <alamat>')
+            update.message.reply_text('Penggunaan: /removetoken <alamat>')
             return
         
         token_address = context.args[0]
@@ -251,55 +260,59 @@ class TelegramBot:
         success = self.db.remove_token(token_address)
         
         if success:
-            await update.message.reply_text(f'Token dengan alamat {token_address} berhasil dihapus.')
+            update.message.reply_text(f'Token dengan alamat {token_address} berhasil dihapus.')
         else:
-            await update.message.reply_text('Gagal menghapus token. Silakan coba lagi nanti.')
+            update.message.reply_text('Gagal menghapus token. Silakan coba lagi nanti.')
     
-    async def list_tokens_command(self, update: Update, context: CallbackContext):
+    # Change from async def to def
+    def list_tokens_command(self, update: Update, context: CallbackContext):
         """
         Handler for /listtokens command
         """
         tokens = self.db.get_monitored_tokens()
         
         if not tokens:
-            await update.message.reply_text('Tidak ada token yang dipantau saat ini.')
+            update.message.reply_text('Tidak ada token yang dipantau saat ini.')
             return
         
         message = 'Daftar token yang dipantau:\n\n'
         for token_address, token_name, token_symbol in tokens:
             message += f'• {token_name} ({token_symbol})\n  `{token_address}`\n\n'
         
-        await update.message.reply_text(message, parse_mode='Markdown')
+        update.message.reply_text(message, parse_mode='Markdown')
     
-    async def list_groups_command(self, update: Update, context: CallbackContext):
+    # Change from async def to def
+    def list_groups_command(self, update: Update, context: CallbackContext):
         """
         Handler for /listgroups command
         """
         # Check if user is admin
         if update.effective_user.id != ADMIN_USER_ID:
-            await update.message.reply_text('Anda tidak memiliki izin untuk menggunakan perintah ini.')
+            update.message.reply_text('Anda tidak memiliki izin untuk menggunakan perintah ini.')
             return
         
         groups = self.db.get_registered_groups()
         
         if not groups:
-            await update.message.reply_text('Tidak ada grup yang terdaftar saat ini.')
+            update.message.reply_text('Tidak ada grup yang terdaftar saat ini.')
             return
         
         message = 'Daftar grup yang terdaftar:\n\n'
         for chat_id in groups:
             message += f'• Chat ID: {chat_id}\n'
         
-        await update.message.reply_text(message)
+        update.message.reply_text(message)
     
-    async def button_callback(self, update: Update, context: CallbackContext):
+    # Change from async def to def
+    def button_callback(self, update: Update, context: CallbackContext):
         """
         Handler for inline keyboard button presses
         """
         query = update.callback_query
-        await query.answer()
+        query.answer()
     
-    async def error_handler(self, update: Update, context: CallbackContext):
+    # Change from async def to def
+    def error_handler(self, update: Update, context: CallbackContext):
         """
         Error handler for the bot
         """
