@@ -81,15 +81,18 @@ class BlockchainListener:
         self.pairs = {}
         self.initialize_pairs()
     
+    # Tambahkan di metode listen_for_swaps
     async def listen_for_swaps(self):
-        """
-        Listen for swap events on Uniswap pairs
-        """
+        """Listen for swap events on Uniswap pairs"""
         print("Starting to listen for swap events...")
         last_block = self.w3.eth.block_number
         
-        while True:
+        # Tambahkan flag untuk kontrol loop
+        self.running = True
+        
+        while self.running:
             try:
+                # Cek apakah ada sinyal untuk berhenti setiap iterasi
                 current_block = self.w3.eth.block_number
                 
                 if current_block > last_block:
@@ -100,11 +103,16 @@ class BlockchainListener:
                     
                     last_block = current_block
                 
-                # Sleep to avoid excessive API calls
-                await asyncio.sleep(12)  # Ethereum block time is ~12-15 seconds
+                # Sleep dengan timeout pendek agar bisa merespons sinyal
+                await asyncio.sleep(5)  # Kurangi dari 12 detik menjadi 5 detik
             except Exception as e:
                 print(f"Error in blockchain listener: {e}")
-                await asyncio.sleep(30)  # Sleep longer on error
+                await asyncio.sleep(10)  # Kurangi dari 30 detik menjadi 10 detik
+    
+    # Tambahkan metode untuk menghentikan listener
+    def stop(self):
+        """Stop the blockchain listener"""
+        self.running = False
     
     async def check_block_for_swaps(self, block_number):
         """

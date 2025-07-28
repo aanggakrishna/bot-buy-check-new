@@ -57,9 +57,16 @@ def cleanup():
     """
     Clean up resources before exiting
     """
-    global bot
+    global bot, blockchain_listener
+    logger.info("Cleaning up resources...")
+    
+    if blockchain_listener:
+        blockchain_listener.stop()
+    
     if bot:
         bot.stop()
+    
+    logger.info("Cleanup complete. Exiting.")
     sys.exit(0)
 
 def signal_handler(sig, frame):
