@@ -35,7 +35,7 @@ DEXSCREENER_API_URL = 'https://api.dexscreener.com/latest/dex'
 ETHPLORER_API_URL = 'https://api.ethplorer.io'
 
 # Etherscan URLs
-ETHERSCAN_TX_URL = 'https://etherscan.io/tx/'
+ETHERSCAN_TX_URL = 'https://etherscan.io/tx/0x'
 ETHERSCAN_ADDRESS_URL = 'https://etherscan.io/address/'
 
 # Fresh wallet threshold (in days)
