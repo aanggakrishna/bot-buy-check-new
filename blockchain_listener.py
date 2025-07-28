@@ -43,6 +43,10 @@ class BlockchainListener:
         from dex_data import DexData
         self.dex_data = DexData()
         
+        # Tambahkan inisialisasi untuk heartbeat
+        self.last_heartbeat = datetime.now()
+        self.heartbeat_interval = 60 * 30  # 30 menit dalam detik
+        
         self.initialize_pairs()
     
     def initialize_pairs(self):
