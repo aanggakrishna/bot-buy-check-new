@@ -28,7 +28,7 @@ ERC20_ABI = json.loads('''[
 ]''')
 
 class BlockchainListener:
-    def __init__(self, token_addresses, callback):
+    def __init__(self, token_addresses, callback, db=None, pattern_detector=None):
         self.w3 = Web3(Web3.HTTPProvider(ETH_NODE_URL))
         self.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
         self.token_addresses = [addr.lower() for addr in token_addresses if addr]
@@ -36,6 +36,13 @@ class BlockchainListener:
         self.factory_contract = self.w3.eth.contract(address=self.w3.to_checksum_address(UNISWAP_V2_FACTORY), abi=UNISWAP_V2_FACTORY_ABI)
         self.weth_address = WETH_ADDRESS.lower()
         self.pairs = {}
+        self.db = db
+        self.pattern_detector = pattern_detector
+        
+        # Tambahkan DexData jika diperlukan
+        from dex_data import DexData
+        self.dex_data = DexData()
+        
         self.initialize_pairs()
     
     def initialize_pairs(self):
@@ -196,6 +203,11 @@ class BlockchainListener:
                 eth_amount = event_args['amount1In'] / 10**18  # WETH has 18 decimals
                 token_amount = event_args['amount0Out'] / 10**token_decimals
             
+            # Get token price information from DexData if available
+            token_info = None
+            if hasattr(self, 'dex_data'):
+                token_info = self.dex_data.get_token_info(token_address)
+            
             # Create buy event data
             buy_event = {
                 'tx_hash': tx_hash,
@@ -208,37 +220,20 @@ class BlockchainListener:
                 'timestamp': datetime.now().timestamp()
             }
             
+            # Store token price for pattern detection if available
+            if hasattr(self, 'db') and hasattr(self, 'pattern_detector') and token_info and 'price_usd' in token_info and token_info['price_usd']:
+                self.db.store_token_price(
+                    token_address,
+                    float(token_info['price_usd']),
+                    float(token_info.get('volume_usd', 0))
+                )
+                
+                # Check for trading patterns
+                patterns = self.pattern_detector.detect_patterns(token_address)
+                if patterns:
+                    buy_event['patterns'] = patterns
+            
             # Call the callback function with the buy event
             await self.callback(buy_event)
         except Exception as e:
             print(f"Error processing buy event: {e}")
-    
-    # Di dalam metode _process_buy_event, tambahkan:
-    
-    # Store token price for pattern detection
-    if token_info and 'price_usd' in token_info and token_info['price_usd']:
-        self.db.store_token_price(
-            token_address,
-            float(token_info['price_usd']),
-            float(token_info.get('volume_usd', 0))
-        )
-        
-        # Check for trading patterns
-        patterns = self.pattern_detector.detect_patterns(token_address)
-        for pattern in patterns:
-            # Store the detected pattern
-            pattern_id = self.db.store_trading_pattern(
-                token_address,
-                pattern['pattern_type'],
-                pattern['start_timestamp'],
-                pattern['end_timestamp'],
-                pattern['start_price'],
-                pattern['end_price'],
-                pattern['percent_change'],
-                pattern['volume_change'],
-                pattern['wallet_count']
-            )
-            
-            # If this is a new pattern, include it in the notification
-            if pattern_id:
-                buy_event['detected_pattern'] = pattern
