@@ -389,3 +389,46 @@ class TelegramBot:
         message += f"Total PNL: ${trading_info['total_pnl']:.2f} ({trading_info['pnl_percentage']:.2f}%)\n"
         
         update.message.reply_text(message)
+    
+    # Di dalam metode _register_handlers, tambahkan:
+    self.dispatcher.add_handler(CommandHandler("patterns", self.patterns_command))
+    
+    # Tambahkan metode baru:
+    def patterns_command(self, update: Update, context: CallbackContext):
+        """
+        Handler for /patterns command
+        """
+        # Check arguments
+        token_address = None
+        hours = 24
+    
+        if context.args:
+            if len(context.args) >= 1:
+                token_address = context.args[0]
+            if len(context.args) >= 2 and context.args[1].isdigit():
+                hours = int(context.args[1])
+        
+        # Get recent patterns
+        patterns = self.db.get_recent_patterns(token_address, hours=hours)
+        
+        if not patterns:
+            update.message.reply_text('No trading patterns detected in the specified time period.')
+            return
+        
+        message = f"Trading patterns detected in the last {hours} hours:\n\n"
+        
+        for pattern in patterns:
+            token_info = self.dex_data.get_token_info(pattern[1])  # token_address is at index 1
+            token_symbol = token_info['symbol'] if token_info else "Unknown"
+            
+            pattern_type = pattern[2]  # pattern_type is at index 2
+            start_time = datetime.fromtimestamp(pattern[3]).strftime('%Y-%m-%d %H:%M')  # start_timestamp at index 3
+            end_time = datetime.fromtimestamp(pattern[4]).strftime('%Y-%m-%d %H:%M')  # end_timestamp at index 4
+            percent_change = pattern[7]  # percent_change at index 7
+            
+            message += f"Token: {token_symbol} ({pattern[1][:6]}...{pattern[1][-4:]})\n"
+            message += f"Pattern: {pattern_type.upper()}\n"
+            message += f"Time: {start_time} to {end_time}\n"
+            message += f"Price Change: {percent_change:.2f}%\n\n"
+        
+        update.message.reply_text(message)

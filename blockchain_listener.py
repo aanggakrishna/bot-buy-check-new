@@ -212,3 +212,33 @@ class BlockchainListener:
             await self.callback(buy_event)
         except Exception as e:
             print(f"Error processing buy event: {e}")
+    
+    # Di dalam metode _process_buy_event, tambahkan:
+    
+    # Store token price for pattern detection
+    if token_info and 'price_usd' in token_info and token_info['price_usd']:
+        self.db.store_token_price(
+            token_address,
+            float(token_info['price_usd']),
+            float(token_info.get('volume_usd', 0))
+        )
+        
+        # Check for trading patterns
+        patterns = self.pattern_detector.detect_patterns(token_address)
+        for pattern in patterns:
+            # Store the detected pattern
+            pattern_id = self.db.store_trading_pattern(
+                token_address,
+                pattern['pattern_type'],
+                pattern['start_timestamp'],
+                pattern['end_timestamp'],
+                pattern['start_price'],
+                pattern['end_price'],
+                pattern['percent_change'],
+                pattern['volume_change'],
+                pattern['wallet_count']
+            )
+            
+            # If this is a new pattern, include it in the notification
+            if pattern_id:
+                buy_event['detected_pattern'] = pattern

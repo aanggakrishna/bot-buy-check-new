@@ -39,7 +39,14 @@ async def main():
             token_addresses = TOKEN_ADDRESSES
         
         # Initialize blockchain listener
-        blockchain_listener = BlockchainListener(token_addresses, bot.send_buy_alert)
+        # Tambahkan import
+        from pattern_detector import PatternDetector
+        
+        # Di dalam fungsi main, setelah inisialisasi database:
+        pattern_detector = PatternDetector(db)
+        
+        # Tambahkan pattern_detector ke blockchain_listener
+        blockchain_listener = BlockchainListener(eth_node_url, token_addresses, telegram_bot.send_buy_alert, db, pattern_detector)
         
         # Start the bot
         bot.start()

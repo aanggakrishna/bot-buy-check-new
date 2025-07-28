@@ -43,3 +43,9 @@ FRESH_WALLET_THRESHOLD = 30
 
 # Swing trader threshold (number of token sales in last 24h)
 SWING_TRADER_THRESHOLD = 3
+
+# Trading pattern detection thresholds
+PUMP_DUMP_PERCENT_THRESHOLD = 20  # Price increase percentage to consider as pump
+PUMP_DUMP_TIME_WINDOW = 24  # Time window in hours to detect pump and dump
+ACCUMULATION_THRESHOLD = 5  # Number of buys needed to consider as accumulation
+ACCUMULATION_TIME_WINDOW = 48  # Time window in hours for accumulation detection
