@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackContext, CallbackQueryHandler, Filters, MessageHandler, Updater
 from web3 import Web3
@@ -41,6 +42,7 @@ class TelegramBot:
         self.dispatcher.add_handler(CommandHandler("listtokens", self.list_tokens_command))
         self.dispatcher.add_handler(CommandHandler("listgroups", self.list_groups_command, filters=Filters.user(user_id=ADMIN_USER_ID)))
         self.dispatcher.add_handler(CommandHandler("tokeninfo", self.token_info_command))
+        self.dispatcher.add_handler(CommandHandler("patterns", self.patterns_command))
         
         # Callback query handler
         self.dispatcher.add_handler(CallbackQueryHandler(self.button_callback))
