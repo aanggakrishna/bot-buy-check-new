@@ -42,7 +42,7 @@ class TelegramBot:
         self.dispatcher.add_handler(CommandHandler("listtokens", self.list_tokens_command))
         self.dispatcher.add_handler(CommandHandler("listgroups", self.list_groups_command, filters=Filters.user(user_id=ADMIN_USER_ID)))
         self.dispatcher.add_handler(CommandHandler("tokeninfo", self.token_info_command))
-        #self.dispatcher.add_handler(CommandHandler("patterns", self.patterns_command))
+        self.dispatcher.add_handler(CommandHandler("patterns", self.patterns_command))  # Add this line here
         
         # Callback query handler
         self.dispatcher.add_handler(CallbackQueryHandler(self.button_callback))
@@ -393,9 +393,6 @@ class TelegramBot:
         update.message.reply_text(message)
     
     # Di dalam metode _register_handlers, tambahkan:
-    self.dispatcher.add_handler(CommandHandler("patterns", self.patterns_command))
-    
-    # Tambahkan metode baru:
     def patterns_command(self, update: Update, context: CallbackContext):
         """
         Handler for /patterns command
