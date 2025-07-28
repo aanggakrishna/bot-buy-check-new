@@ -56,6 +56,21 @@ class TelegramBot:
         Send buy alert to all registered groups
         """
         try:
+            # Cek apakah ini adalah heartbeat
+            if buy_event.get('is_heartbeat', False):
+                # Kirim heartbeat hanya ke admin
+                try:
+                    from config import ADMIN_USER_ID
+                    self.updater.bot.send_message(
+                        chat_id=ADMIN_USER_ID,
+                        text=f"🔔 HEARTBEAT: {buy_event['message']}",
+                        parse_mode='Markdown'
+                    )
+                    return
+                except Exception as e:
+                    logger.error(f"Error sending heartbeat to admin: {e}")
+                    return
+            
             # Check if we've already processed this transaction
             if self.db.is_transaction_processed(buy_event['tx_hash']):
                 return

@@ -97,10 +97,20 @@ class BlockchainListener:
         # Tambahkan flag untuk kontrol loop
         self.running = True
         
+        # Kirim heartbeat awal
+        await self._send_heartbeat("Bot started and listening for swap events")
+        
         while self.running:
             try:
                 # Cek apakah ada sinyal untuk berhenti setiap iterasi
                 current_block = self.w3.eth.block_number
+                
+                # Cek apakah perlu mengirim heartbeat
+                current_time = datetime.now()
+                time_diff = (current_time - self.last_heartbeat).total_seconds()
+                if time_diff >= self.heartbeat_interval:
+                    await self._send_heartbeat(f"Bot still running. Checked blocks up to {current_block}")
+                    self.last_heartbeat = current_time
                 
                 if current_block > last_block:
                     print(f"Checking blocks {last_block+1} to {current_block}")
@@ -115,6 +125,23 @@ class BlockchainListener:
             except Exception as e:
                 print(f"Error in blockchain listener: {e}")
                 await asyncio.sleep(10)  # Kurangi dari 30 detik menjadi 10 detik
+    
+    async def _send_heartbeat(self, message):
+        """Send heartbeat message to admin"""
+        try:
+            from config import ADMIN_USER_ID
+            
+            # Buat event heartbeat
+            heartbeat_event = {
+                'is_heartbeat': True,
+                'message': message,
+                'timestamp': datetime.now().timestamp()
+            }
+            
+            # Panggil callback dengan event heartbeat
+            await self.callback(heartbeat_event)
+        except Exception as e:
+            print(f"Error sending heartbeat: {e}")
     
     # Tambahkan metode untuk menghentikan listener
     def stop(self):
